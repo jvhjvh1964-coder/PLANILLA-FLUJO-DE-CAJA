@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>PLANILLA FLUJO DE CAJA - Juego</title>
+
+<style>
+:root{--ink:#18212b;--line:#263238;--paper:#fff;--bg:#eef2f7}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--ink)}
+header{background:#13243a;color:#fff;text-align:center;padding:16px 10px}
+header h1{margin:0;font-size:clamp(21px,4vw,32px);letter-spacing:.5px}
+header p{margin:6px 0 0;font-size:14px;color:#dce7f5}
+main{max-width:1180px;margin:18px auto;padding:0 12px 24px}
+.topbar{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid #d4dce5;border-radius:12px;padding:12px 16px;margin-bottom:14px}
+.metric{font-weight:800;font-size:clamp(17px,3vw,23px)}
+#timer{color:#b42318}
+#status{font-size:14px;color:#475467}
+h2{font-size:19px;margin:18px 0 9px}
+.table-wrap{overflow-x:auto;background:#fff;border-radius:10px;padding:8px;border:1px solid #d5dce5}
+table{border-collapse:collapse;width:100%;min-width:650px;background:#fff}
+th,td{border:1px solid #333;padding:7px 9px;text-align:right;font-size:14px}
+th:first-child,td:first-child{text-align:left;min-width:245px}
+thead th{background:#e8edf3;text-align:center}
+.section th{background:#dce5ef;text-align:left;font-weight:900}
+.total td{font-weight:900;background:#f1f4f7}
+.net td{font-weight:900;background:#eaf5ff}
+.questions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.question{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid #aab5c2;border-radius:9px;padding:9px;min-height:66px;cursor:pointer;text-align:left;font-weight:700}
+.question .qtext{flex:1;font-size:13px;line-height:1.25}
+.question .slot{width:104px;min-height:42px;display:flex;align-items:center;justify-content:center;border:2px dashed #718096;border-radius:7px;background:#fff;color:#111;font-size:clamp(14px,2vw,19px);font-weight:900;text-align:center;padding:4px}
+.question.active{outline:4px solid #1d4ed8;border-color:#1d4ed8}
+.question.done{display:none}
+.bank{display:grid;grid-template-columns:repeat(7,minmax(75px,1fr));gap:8px}
+.tile{border:0;border-radius:9px;min-height:62px;padding:8px 4px;font-size:clamp(13px,2vw,18px);font-weight:900;cursor:pointer;color:#101828;box-shadow:0 2px 4px #0002;overflow-wrap:anywhere}
+.tile.selected{outline:4px solid #111;transform:scale(1.04)}
+.tile.used{visibility:hidden;pointer-events:none}
+.yellow{background:#ffeb3b}.red{background:#ef4444;color:white}.blue{background:#2563eb;color:white}
+.cyan{background:#67e8f9}.green{background:#22c55e}.black{background:#111827;color:#fff}
+.hint{background:#fff8db;border-left:5px solid #eab308;padding:10px 12px;border-radius:6px;font-size:14px;margin:10px 0}
+footer{text-align:center;color:#aeb4bd;font-size:11px;font-weight:400;padding:18px 8px 22px}
+#startOverlay,#finalOverlay,#feedback{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:10}
+
+#startOverlay{background:#061426;cursor:pointer}
+
+
+
+/* BIENVENIDA: LETRAS CELESTES CON BORDES LED BLANCOS */
+
+#welcomeOverlay{
+    position:fixed;
+    inset:0;
+    z-index:12;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    background:#061426;
+    padding:10px;
+}
+
+#welcomeWord{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-wrap:wrap;
+    width:100%;
+    text-align:center;
+    font-size:clamp(35px,10vw,100px);
+    font-weight:1000;
+    letter-spacing:2px;
+    line-height:1.2;
+}
+
+.welcomeLetter{
+    display:inline-block;
+    color:#00E5FF;
+    -webkit-text-stroke:1.5px #FFFFFF;
+    text-shadow:
+        0 0 4px #FFFFFF,
+        0 0 9px #FFFFFF,
+        0 0 16px #00E5FF,
+        0 0 30px #00BFFF,
+        0 0 45px #00BFFF;
+    opacity:0;
+    transform:scale(.1) rotate(-25deg);
+    animation:letterLED .16s ease-out forwards;
+}
+
+@keyframes letterLED{
+    0%{
+        opacity:0;
+        transform:scale(.1) rotate(-25deg);
+        filter:brightness(2);
+    }
+    65%{
+        opacity:1;
+        transform:scale(1.3) rotate(5deg);
+    }
+    100%{
+        opacity:1;
+        transform:scale(1) rotate(0deg);
+        filter:brightness(1);
+    }
+}
+
+.startEmoji{
+    font-size:clamp(100px,35vw,300px);
+    animation:none;
+}
+
+/* ACTIVAR ANIMACIÓN SOLAMENTE AL MOSTRAR EL EMOJI */
+#startOverlay.showEmoji .startEmoji{
+    animation:zoomStart 1s ease-in-out forwards;
+}
+
+@keyframes zoomStart{0%{transform:scale(.05);opacity:.2}55%{transform:scale(1.5);opacity:1}100%{transform:scale(5);opacity:0}}
+
+#finalOverlay{display:none;background:#061426f2;color:white;text-align:center;padding:20px;z-index:20}
+.finalBox{width:min(92vw,520px);border:2px solid #d7e4f5;border-radius:16px;padding:28px 18px;background:#142943;box-shadow:0 15px 60px #0008}
+.finalBox h2{font-size:28px;margin:0 0 20px;color:#fff}
+
+#studentNameFinal{
+    display:inline-block;
+    margin:0 auto 18px;
+    padding:9px 18px;
+    border:2px solid #f59e0b;
+    border-radius:10px;
+    color:#fff;
+    background:rgba(245,158,11,.12);
+    font-size:clamp(17px,4vw,22px);
+    font-weight:900;
+    letter-spacing:1px;
+    box-shadow:0 0 10px rgba(245,158,11,.18);
+}
+
+.finalBox .grade{color: yellow;font-size:clamp(52px,14vw,82px);font-weight:900;margin:8px 0}
+
+.finalBox p{font-size:18px;margin:9px 0}
+
+/* EFECTO DE RESPUESTA INCORRECTA */
+#feedback{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:35;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+    font-size:clamp(65px,18vw,150px);
+    font-weight:900;
+    white-space:nowrap;
+}
+
+#feedback.bad{
+    color:#ef233c;
+}
+
+#feedback.show{
+    display:flex;
+    animation:zoomIncorrect .5s ease-out forwards;
+}
+
+/* ZOOM DE 0,5 SEGUNDOS */
+@keyframes zoomIncorrect{
+    0%{
+        transform:scale(.05);
+        opacity:0;
+    }
+    45%{
+        transform:scale(1.35);
+        opacity:1;
+    }
+    75%{
+        transform:scale(1);
+        opacity:1;
+    }
+    100%{
+        transform:scale(1.5);
+        opacity:0;
+    }
+}
+
+@media(max-width:700px){.questions{grid-template-columns:1fr}.bank{grid-template-columns:repeat(4,minmax(60px,1fr))}.question .qtext{font-size:12px}.question .slot{width:94px}}
+
+
+/* VENTANA DE PREGUNTAS */
+#quizWindow{
+    position:fixed;
+    z-index:15;
+    top:105px;
+    left:50%;
+    transform:translateX(-50%);
+    width:min(92vw,540px);
+    background:#fff;
+    border:3px solid #19324f;
+    border-radius:14px;
+    box-shadow:0 12px 35px #0005;
+    color:#17212b;
+    overflow:hidden;
+    display:none;
+}
+
+#quizHeader{
+    background:#19324f;
+    color:#fff;
+    padding:9px 12px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    cursor:move;
+    touch-action:none;
+    user-select:none;
+    font-weight:900;
+    font-size:13px;
+}
+
+#quizHeader small{
+    font-weight:600;
+    color:#dbeafe;
+    font-size:11px;
+}
+
+#quizContent{
+    padding:12px;
+}
+
+#questionCounter{
+    font-size:11px;
+    color:#526174;
+    font-weight:800;
+    margin-bottom:6px;
+}
+
+#questionText{
+    font-size:16px;
+    font-weight:900;
+    line-height:1.15;
+    margin:0 0 8px;
+}
+
+#alternatives{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:6px;
+}
+
+.answerOption{
+    border:0;
+    border-radius:8px;
+    min-height:43px;
+    padding:7px 10px;
+    font-size:17px;
+    font-weight:900;
+    cursor:pointer;
+    box-shadow:0 3px 7px #0002;
+    overflow-wrap:anywhere;
+}
+
+.answerOption:disabled{
+    cursor:default;
+    opacity:.85;
+}
+
+#quizFeedback{
+    min-height:18px;
+    text-align:center;
+    font-weight:900;
+    font-size:13px;
+    margin-top:6px;
+}
+
+/* AJUSTES EXCLUSIVOS PARA CELULARES */
+@media(max-width:600px){
+
+    #quizWindow{
+        top:65px;
+        width:calc(100vw - 30px);
+        max-height:55vh;
+        overflow-y:auto;
+    }
+
+    #quizHeader{
+        padding:6px 9px;
+        font-size:11px;
+    }
+
+    #quizHeader small{
+        font-size:9px;
+    }
+
+    #quizContent{
+        padding:8px;
+    }
+
+    #questionCounter{
+        font-size:10px;
+        margin-bottom:4px;
+    }
+
+    #questionText{
+        font-size:13px;
+        line-height:1.15;
+        margin-bottom:6px;
+    }
+
+    #alternatives{
+        gap:5px;
+    }
+
+    .answerOption{
+        min-height:35px;
+        padding:5px 7px;
+        font-size:14px;
+        border-radius:6px;
+    }
+
+    #quizFeedback{
+        min-height:14px;
+        font-size:11px;
+        margin-top:4px;
+    }
+}
+
+
+/* DESTELLO DE PANTALLA POR INACTIVIDAD */
+
+#idleFlash{
+    position:fixed;
+    inset:0;
+    z-index:34;
+    pointer-events:none;
+    opacity:0;
+    background:rgba(255,255,255,0);
+}
+
+#idleFlash.show{
+    animation:idleFlashEffect 0.4s ease-in-out forwards;
+}
+
+@keyframes idleFlashEffect{
+    0%{
+        opacity:0;
+        background:rgba(255,255,255,0);
+    }
+    25%{
+        opacity:1;
+        background:rgba(255,255,255,0.85);
+    }
+    55%{
+        opacity:0.7;
+        background:rgba(0,210,255,0.55);
+    }
+    100%{
+        opacity:0;
+        background:rgba(255,255,255,0);
+    }
+}
+
+/* EXPLOSIÓN DE BURBUJAS CON COLORES INTENSOS */
+
+#bubbleExplosion{
+    position:fixed;
+    inset:0;
+    z-index:30;
+    pointer-events:none;
+    overflow:hidden;
+}
+
+.burstBubble{
+    position:absolute;
+    left:50%;
+    top:50%;
+
+    width:var(--size);
+    height:var(--size);
+
+    border-radius:50%;
+
+    background:
+      radial-gradient(
+        circle at 28% 25%,
+        #ffffff 0%,
+        var(--bubble) 18%,
+        var(--bubble) 72%,
+        #ffffff 100%
+      );
+
+    border:4px solid var(--bubble);
+
+    box-shadow:
+      0 0 12px var(--bubble),
+      0 0 25px var(--bubble),
+      0 0 40px var(--bubble),
+      inset 0 0 12px #ffffff;
+
+    opacity:0;
+
+    animation:bubbleBurst .7s ease-out forwards;
+}
+
+@keyframes bubbleBurst{
+
+    0%{
+        opacity:0;
+        transform:translate(-50%,-50%) scale(.08);
+    }
+
+    12%{
+        opacity:1;
+    }
+
+    100%{
+        opacity:0;
+        transform:
+          translate(
+            calc(-50% + var(--dx)),
+            calc(-50% + var(--dy))
+          )
+          scale(1.25);
+    }
+}
+
+/* VENTANA PARA INGRESAR NOMBRE DEL ESTUDIANTE */
+#nameOverlay{
+    position:fixed;
+    inset:0;
+    z-index:50;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(0,0,0,.65);
+}
+
+.nameBox{
+    width:min(92vw,420px);
+    padding:28px 22px;
+    background:#ffffff;
+    color:#111827;
+    border:3px solid #2563eb;
+    border-radius:16px;
+    box-shadow:0 12px 35px #0006;
+    text-align:center;
+}
+
+.nameBox h2{
+    color:#111827;
+    font-size:23px;
+    margin:0 0 12px;
+}
+
+.nameBox p{
+    color:#111827;
+    font-size:16px;
+    margin:0 0 16px;
+}
+
+#studentNameInput{
+    width:100%;
+    padding:13px;
+    border:2px solid #2563eb;
+    border-radius:9px;
+    background:#ffffff;
+    color:#111111;
+    font-size:19px;
+    font-weight:800;
+    text-align:center;
+    text-transform:uppercase;
+    outline:none;
+}
+
+#studentNameInput:focus{
+    box-shadow:0 0 0 3px #2563eb33;
+}
+
+#confirmStudentName{
+    width:100%;
+    margin-top:17px;
+    padding:13px;
+    border:2px solid #1d4ed8;
+    border-radius:9px;
+    background:#2563eb;
+    color:#ffffff;
+    font-size:18px;
+    font-weight:900;
+    cursor:pointer;
+}
+
+#confirmStudentName:hover{
+    background:#1d4ed8;
+}
+
+
+/* VENTANA PERMANENTE DEL RANKING */
+
+#rankingOverlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:40;
+    background:rgba(0,0,0,.92);
+    align-items:center;
+    justify-content:center;
+    padding:12px;
+}
+
+.rankingBox{
+    width:min(98vw,950px);
+    max-height:90vh;
+    overflow:auto;
+    padding:20px;
+    background:#142943;
+    color:white;
+    border:3px solid #facc15;
+    border-radius:16px;
+    box-shadow:0 12px 40px #0009;
+    text-align:center;
+}
+
+.rankingBox h2{
+    color:#facc15;
+    font-size:clamp(20px,4vw,30px);
+    font-weight:900;
+    margin:5px 0 20px;
+}
+
+.rankingTableWrap{
+    width:100%;
+    overflow-x:auto;
+}
+
+#rankingTable{
+    width:100%;
+    min-width:550px;
+    border-collapse:collapse;
+    background:white;
+    color:#111827;
+    table-layout:fixed;
+}
+
+/* ACHICAR COLUMNA PUNTAJE */
+#rankingTable th:nth-child(1),
+#rankingTable td:nth-child(1){
+    width:90px;
+    max-width:90px;
+    padding-left:3px;
+    padding-right:3px;
+}
+
+#rankingTable th{
+    background:#1d4ed8;
+    color:white;
+    font-size:15px;
+    font-weight:900;
+    text-align:center;
+    padding:12px 7px;
+}
+
+#rankingTable td{
+    border:1px solid #9ca3af;
+    padding:10px 7px;
+    font-size:15px;
+    font-weight:800;
+    text-align:center;
+}
+
+#rankingTable tbody tr:nth-child(even){
+    background:#e5e7eb;
+}
+
+#rankingTable tbody tr:nth-child(odd){
+    background:#ffffff;
+}
+
+@media(max-width:600px){
+
+    .rankingBox{
+        padding:12px 7px;
+    }
+
+    #rankingTable th,
+    #rankingTable td{
+        font-size:12px;
+        padding:9px 5px;
+    }
+}
+
+
+
+</style>
+
+</head>
+
+<body>
+
+<header><h1>🎰 PLANILLA FLUJO DE CAJA</h1></header>
+
+<main>
+  <div class="topbar">
+    <div class="metric">⏰ <span id="timer">03:00</span></div>
+
+    <div class="metric">✔️ <span id="hits">0</span> / 36</div>
+
+    <div id="status">Selecciona una pregunta y luego una respuesta (clic-clic)</div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="cashTable" aria-label="Planilla de flujo de caja">
+      <thead>
+    	   <tr>
+        	<th>DETALLE PLANILLA FLUJO DE CAJA</th>
+        	<th id="mes0"></th>
+        	<th id="mes1"></th>
+        	<th id="mes2"></th>
+           </tr>
+      </thead>
+      <tbody id="cashBody"></tbody>
+    </table>
+  </div>
+
+<div class="hint">Responde las 36 preguntas que aparecerán, una a la vez, en la ventana móvil. Puedes arrastrarla desde su barra superior para consultar la planilla.</div>
+
+</main>
+
+<footer>Material didáctico del profesor JOSÉ VEGA | jvhjvh1964@gmail.com | Talca - Chile (2026)</footer>
+
+
+<!-- BIENVENIDA CON PALABRAS DORADAS -->
+<div id="welcomeOverlay">
+    <div id="welcomeWord"></div>
+</div>
+
+<!-- EMOJI DE INICIO -->
+<div id="startOverlay" aria-label="Iniciar juego">
+    <div class="startEmoji">🎰</div>
+</div>
+
+
+<!-- VENTANA DE INGRESO DEL ESTUDIANTE -->
+<div id="nameOverlay">
+  <div class="nameBox">
+    <h2>🎰 PLANILLA FLUJO DE CAJA</h2>
+    
+    <input
+      type="text"
+      id="studentNameInput"
+      placeholder="INGRESE SU NOMBRE"
+      maxlength="50"
+      autocomplete="off"
+    >
+
+    <button type="button" id="confirmStudentName">
+      ▶️COMENZAR
+    </button>
+  </div>
+</div>
+
+<div id="quizWindow" role="dialog" aria-modal="false">
+  <div id="quizHeader"><span>🎰 PLANILLA FLUJO DE CAJA</span><small>↕ Arrastra aquí</small></div>
+  <div id="quizContent">
+
+    <div id="questionCounter">PREGUNTA 1 DE 36</div>
+
+    <p id="questionText"></p>
+    <div id="alternatives"></div>
+    <div id="quizFeedback"></div>
+  </div>
+</div>
+
+<!--div id="feedback"></div>
+<div id="bubbleExplosion" aria-hidden="true"></div-->
+
+<div id="feedback"></div>
+
+<!-- DESTELLO POR INACTIVIDAD -->
+<div id="idleFlash" aria-hidden="true"></div>
+
+<div id="bubbleExplosion" aria-hidden="true"></div>
+
+
+<div id="finalOverlay">
+  <div class="finalBox">
+    <h1>🎰 PLANILLA FLUJO DE CAJA</h1>
+
+    <div id="studentNameFinal"></div>
+
+    <h2>NOTA FINAL</h2>
+    <div class="grade" id="finalGrade">1,0</div>
+    <p id="finalDate"></p>
+    <p id="finalTime"></p>
+  </div>
+</div>
+
+
+<!-- VENTANA PERMANENTE DEL RANKING -->
+<div id="rankingOverlay">
+  <div class="rankingBox">
+
+    <h2>🏆 RANKING 🏆</h2>
+    <h2>PLANILLA FLUJO DE CAJA</h2>
+    <p>Clasificados con Nota 7.0</p>
+
+
+    <div class="rankingTableWrap">
+      <table id="rankingTable">
+        <thead>
+          <tr>
+            <th>Puntaje</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Nombre Estudiante</th>
+          </tr>
+        </thead>
+
+        <tbody id="rankingBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+"use strict";
+// FUENTE DE DATOS: página 1 del PDF adjunto. Montos expresados en pesos chilenos.
+
+// SELECCIONAR ALEATORIAMENTE 3 MESES CONSECUTIVOS
+const todosLosMeses = [
+    "ENERO","FEBRERO","MARZO","ABRIL",
+    "MAYO","JUNIO","JULIO","AGOSTO",
+    "SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"
+];
+
+const inicioMes = Math.floor(Math.random()*10);
+
+const meses = todosLosMeses.slice(
+    inicioMes,
+    inicioMes+3
+);
+
+// GENERAR NÚMEROS ALEATORIOS
+function numeroAleatorio(min,max){
+    return Math.round(
+        (min + Math.random() * (max-min)) / 1000
+    ) * 1000;
+}
+
+// CUENTAS DE INGRESOS
+const ingresos = [
+    ["Ventas internet",0,0,0],
+    ["Ventas físicas",0,0,0],
+    ["Cobros clientes",0,0,0],
+    ["Otros ingresos",0,0,0]
+];
+
+// CUENTAS DE EGRESOS
+const egresos = [
+    ["Mercaderías",0,0,0],
+    ["Útiles oficina",0,0,0],
+    ["Proveedores",0,0,0],
+    ["Arriendo",0,0,0],
+    ["Préstamo bancario",0,0,0],
+    ["Sueldos",0,0,0],
+    ["Otros gastos",0,0,0]
+];
+
+// MESES CON FLUJOS POSITIVOS Y NEGATIVOS
+// Siempre habrá al menos un mes positivo y uno negativo.
+const signosFlujo = shuffle([1,-1,1]);
+
+// GENERAR INGRESOS Y EGRESOS DE CADA MES
+meses.forEach((mes,i)=>{
+
+    // GENERAR INGRESOS ALEATORIOS
+    ingresos.forEach(cuenta=>{
+        cuenta[i+1] = numeroAleatorio(500000,4500000);
+    });
+
+    const totalIngresosMes = ingresos.reduce(
+        (suma,cuenta)=>suma+cuenta[i+1],0
+    );
+
+    // GENERAR EGRESOS BASE ALEATORIOS
+    egresos.forEach(cuenta=>{
+        cuenta[i+1] = numeroAleatorio(150000,1800000);
+    });
+
+    const totalEgresosBase = egresos.reduce(
+        (suma,cuenta)=>suma+cuenta[i+1],0
+    );
+
+    // DEFINIR SI EL MES SERÁ POSITIVO O NEGATIVO
+    const factor = signosFlujo[i] === 1
+        ? 0.75 + Math.random()*0.15
+        : 1.10 + Math.random()*0.15;
+
+    // AJUSTAR EGRESOS PARA CONSEGUIR EL SIGNO DESEADO
+    egresos.forEach(cuenta=>{
+        cuenta[i+1] = Math.round(
+            (cuenta[i+1] / totalEgresosBase) *
+            totalIngresosMes * factor / 1000
+        ) * 1000;
+    });
+
+});
+
+
+// NOMBRES DE TODAS LAS CUENTAS
+
+const accountNames = [...ingresos,...egresos]
+    .map(r=>r[0].toUpperCase());
+
+const money = n => "$ " + Math.round(n).toLocaleString("es-CL");
+
+const total = (rows,m) =>
+    rows.reduce((s,r)=>s+r[m+1],0);
+
+const totalIng = meses.map((_,i)=>total(ingresos,i));
+const totalEgr = meses.map((_,i)=>total(egresos,i));
+
+const flujo = meses.map((_,i)=>totalIng[i]-totalEgr[i]);
+
+// SALDO INICIAL ALEATORIO DEL PRIMER MES
+const saldoInicial = [
+    numeroAleatorio(3000000,8000000),
+    0,
+    0
+];
+
+// SALDOS INICIALES DE LOS MESES SIGUIENTES
+saldoInicial[1] = saldoInicial[0] + flujo[0];
+saldoInicial[2] = saldoInicial[1] + flujo[1];
+
+const saldoFinal = saldoInicial.map(
+    (saldo,i)=>saldo+flujo[i]
+);
+
+
+function addRow(tbody,label,values,cls=""){
+ const tr=document.createElement("tr"); if(cls)tr.className=cls;
+ const first=document.createElement("td");first.textContent=label;tr.appendChild(first);
+ values.forEach(v=>{const td=document.createElement("td");td.textContent=typeof v==="number"?money(v):v;tr.appendChild(td)});
+ tbody.appendChild(tr);
+}
+
+function renderTable(){
+ const b=document.getElementById("cashBody");
+
+// ACTUALIZAR ENCABEZADOS DE LOS MESES
+meses.forEach((mes,i)=>{
+    document.getElementById("mes"+i).textContent=mes;
+});
+
+ const section=(name)=>{const tr=document.createElement("tr");tr.className="section";const th=document.createElement("th");th.colSpan=4;th.textContent=name;tr.appendChild(th);b.appendChild(tr)};
+ section("INGRESOS");
+ ingresos.forEach(r=>addRow(b,"- "+r[0],r.slice(1)));
+ addRow(b,"TOTAL INGRESOS (1)",totalIng,"total");
+ section("EGRESOS");
+ egresos.forEach(r=>addRow(b,"- "+r[0],r.slice(1)));
+ addRow(b,"TOTAL EGRESOS (2)",totalEgr,"total");
+ addRow(b,"FLUJO CAJA NETO (3) = (1) - (2)",flujo,"net");
+ addRow(b,"SALDO INICIAL CAJA (0)",saldoInicial,"");
+ addRow(b,"SALDO FINAL CAJA (4) = (0) + (3)",saldoFinal,"net");
+}
+
+const preguntasMesNegativo = meses
+    .filter((mes,i)=>flujo[i]<0)
+    .join(" Y ");
+
+const mesMayorFlujo = meses[flujo.indexOf(Math.max(...flujo))];
+const mesMenorFlujo = meses[flujo.indexOf(Math.min(...flujo))];
+
+function cuentaExtrema(lista,mesIndex,operacion){
+    const ordenada = [...lista].sort((a,b)=>
+        operacion === "menor"
+            ? a[mesIndex+1]-b[mesIndex+1]
+            : b[mesIndex+1]-a[mesIndex+1]
+    );
+
+    return ordenada[0][0].toUpperCase();
+}
+
+function valorExtremo(lista,mesIndex,operacion){
+    const valores = lista.map(cuenta=>cuenta[mesIndex+1]);
+
+    return operacion === "menor"
+        ? Math.min(...valores)
+        : Math.max(...valores);
+}
+
+const indiceMayorSaldo = saldoInicial.indexOf(
+    Math.max(...saldoInicial)
+);
+
+const questions = [
+
+    // 20 PREGUNTAS SOBRE VALORES E IMPORTES
+
+    {q:"MES CON MAYOR FLUJO DE CAJA",a:mesMayorFlujo,kind:"month"},
+
+/*    {q:"FLUJO CAJA NETO DE ENERO",a:flujo[0],kind:"money"},*/
+      {q:`FLUJO CAJA NETO DE ${meses[0]}`,
+       a:flujo[0],kind:"money"},
+
+    {q:"MES(ES) CON FLUJO NEGATIVO",
+     a:preguntasMesNegativo,kind:"text"},
+
+    /* {q:"MENOR EGRESO DE FEBRERO",
+     a:valorExtremo(egresos,1,"menor"),kind:"money"},
+
+    {q:"CUENTA CON EL MENOR EGRESO DE MARZO",
+     a:cuentaExtrema(egresos,2,"menor"),kind:"account"},
+
+    {q:"CUENTA CON EL MENOR INGRESO DE ENERO",
+     a:cuentaExtrema(ingresos,0,"menor"),kind:"account"},
+
+    {q:"CUENTA CON EL MAYOR EGRESO DE FEBRERO",
+     a:cuentaExtrema(egresos,1,"mayor"),kind:"account"},
+
+    {q:"CUENTA CON EL MAYOR INGRESO DE FEBRERO?",
+     a:cuentaExtrema(ingresos,1,"mayor"),kind:"account"}, */
+
+// MENOR EGRESO
+{q:`MENOR EGRESO DE ${meses[1]}`,
+ a:valorExtremo(egresos,1,"menor"),kind:"money"},
+
+// CUENTA CON EL MENOR EGRESO
+{q:`CUENTA CON EL MENOR EGRESO DE ${meses[2]}`,
+ a:cuentaExtrema(egresos,2,"menor"),kind:"account"},
+
+// CUENTA CON EL MENOR INGRESO
+{q:`CUENTA CON EL MENOR INGRESO DE ${meses[0]}`,
+ a:cuentaExtrema(ingresos,0,"menor"),kind:"account"},
+
+// CUENTA CON EL MAYOR EGRESO
+{q:`CUENTA CON EL MAYOR EGRESO DE ${meses[1]}`,
+ a:cuentaExtrema(egresos,1,"mayor"),kind:"account"},
+
+// CUENTA CON EL MAYOR INGRESO
+{q:`CUENTA CON EL MAYOR INGRESO DE ${meses[1]}`,
+ a:cuentaExtrema(ingresos,1,"mayor"),kind:"account"},
+
+    {q:"TOTAL DE CUENTAS PARA INGRESOS",
+     a:"4 CUENTAS",kind:"text"},
+
+    {q:"TOTAL DE CUENTAS PARA EGRESOS",
+     a:"7 CUENTAS",kind:"text"},
+
+    {q:"SALDO INICIAL CAJA DEL PERIODO",
+     a:saldoInicial[0],kind:"money"},
+
+/*    {q:"MAYOR INGRESO DE ENERO",
+     a:valorExtremo(ingresos,0,"mayor"),kind:"money"}, */
+
+{q:`MAYOR INGRESO DE ${meses[0]}`,
+ a:valorExtremo(ingresos,0,"mayor"),kind:"money"},
+
+    {q:"MESES DEL PERÍODO",a:"3 MESES",kind:"text"},
+
+    {q:"SALDO FINAL CAJA DEL PERIODO",
+     a:saldoFinal[2],kind:"money"},
+
+/*    {q:"MAYOR EGRESO DE ENERO",
+     a:valorExtremo(egresos,0,"mayor"),kind:"money"}, */
+
+{q:`MAYOR EGRESO DE ${meses[0]}`,
+ a:valorExtremo(egresos,0,"mayor"),kind:"money"},
+
+/*    {q:"FLUJO CAJA NETO DE FEBRERO",a:flujo[1],kind:"money"}, */
+     {q:`FLUJO CAJA NETO DE ${meses[1]}`,
+      a:flujo[1],kind:"money"},
+
+/*    {q:"MAYOR INGRESO DE MARZO",
+     a:valorExtremo(ingresos,2,"mayor"),kind:"money"}, */
+
+{q:`MAYOR INGRESO DE ${meses[2]}`,
+ a:valorExtremo(ingresos,2,"mayor"),kind:"money"},
+
+    {q:"MES CON MENOR FLUJO DE CAJA",
+     a:mesMenorFlujo,kind:"month"},
+
+  /*  {q:"FLUJO CAJA NETO DE MARZO",a:flujo[2],kind:"money"}, */
+      {q:`FLUJO CAJA NETO DE ${meses[2]}`,
+       a:flujo[2],kind:"money"},
+
+    {q:"MAYOR SALDO INICIAL CAJA",
+     a:saldoInicial[indiceMayorSaldo],kind:"money"},
+
+
+    // 16 PREGUNTAS SOBRE NOMBRES DE CUENTAS
+
+    {q:"CUENTA QUE REGISTRA LAS VENTAS POR INTERNET",
+     a:"VENTAS INTERNET",kind:"account"},
+
+    {q:"CUENTA PARA LAS VENTAS HECHAS EN FORMA PRESENCIAL",
+     a:"VENTAS FÍSICAS",kind:"account"},
+
+    {q:"REPRESENTA EL DINERO RECIBIDO DE LOS CLIENTES",
+     a:"COBROS CLIENTES",kind:"account"},
+
+    {q:"AGRUPA ENTRADAS DE DINERO DISTINTAS DE LAS VENTAS Y COBROS",
+     a:"OTROS INGRESOS",kind:"account"},
+
+    {q:"CUENTA PARA LA COMPRA DE PRODUCTOS",
+     a:"MERCADERÍAS",kind:"account"},
+
+    {q:"REPRESENTA LOS GASTOS EN MATERIALES PARA EL TRABAJO ADMINISTRATIVO",
+     a:"ÚTILES OFICINA",kind:"account"},
+
+    {q:"CUENTA PARA LOS PAGOS REALIZADOS A LOS PROVEEDORES",
+     a:"PROVEEDORES",kind:"account"},
+
+    {q:"CUENTA PARA PAGAR EL USO DEL LOCAL COMERCIAL",
+     a:"ARRIENDO",kind:"account"},
+
+    {q:"REPRESENTA LOS PAGOS DE UN CRÉDITO BANCARIO",
+     a:"PRÉSTAMO BANCARIO",kind:"account"},
+
+    {q:"REGISTRA LOS PAGOS AL PERSONAL DE LA EMPRESA",
+     a:"SUELDOS",kind:"account"},
+
+    {q:"AGRUPA LOS DESEMBOLSOS QUE NO ESTÁN IDENTIFICADOS EN OTROS CONCEPTOS",
+     a:"OTROS GASTOS",kind:"account"},
+
+    {q:"CUENTA PARA LA ENTRADA DE DINERO POR VENTAS",
+     a:"VENTAS INTERNET",kind:"account"},
+
+    {q:"REPRESENTA INGRESOS POR OPERACIONES DE VENTA",
+     a:"VENTAS FÍSICAS",kind:"account"},
+
+    {q:"REPRESENTA LA SALIDA DE DINERO POR REMUNERACIONES",
+     a:"SUELDOS",kind:"account"},
+
+    {q:"REPRESENTA LA SALIDA DE DINERO POR OCUPAR UN LOCAL COMERCIAL",
+     a:"ARRIENDO",kind:"account"},
+
+    {q:"REPRESENTA LA SALIDA DE DINERO POR COMPRAS A PROVEEDORES",
+     a:"PROVEEDORES",kind:"account"}
+
+];
+
+
+const colors=["yellow","red","blue","cyan","green","black"];
+const colorStyles={
+ yellow:{bg:"#ffeb3b",fg:"#111827"},red:{bg:"#dc2626",fg:"#ffffff"},
+ blue:{bg:"#2563eb",fg:"#ffffff"},cyan:{bg:"#67e8f9",fg:"#083344"},
+ green:{bg:"#16a34a",fg:"#ffffff"},black:{bg:"#111827",fg:"#ffffff"}
+};
+
+/* ======== 180 segundos = 3 minutos para jugar ==========*/
+let correct=0,remaining=180,interval=null,locked=true;
+let questionOrder=[],currentQuestion=0,answerLocked=false;
+
+
+// ==========================================
+// CONEXIÓN CON GOOGLE SHEETS
+// ==========================================
+
+// REEMPLAZAR POR LA URL DE TU APLICACIÓN WEB
+
+/* const SCRIPT_URL = "PEGA_AQUI_LA_URL_DE_APPS_SCRIPT"; */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWmGhKvn6whp4Ou7z_R9HqqqxxTLWRTWX4MfJ-1j_xf-hDAWgeA1c9w6LR4EDsW3KRYQ/exec";
+
+
+// CONSULTAR GOOGLE SHEETS MEDIANTE JSONP
+function consultarRanking(parametros, callback){
+
+    const script = document.createElement("script");
+
+    window.respuestaRanking = function(data){
+
+        callback(data);
+
+        script.remove();
+
+        delete window.respuestaRanking;
+    };
+
+    parametros.callback = "respuestaRanking";
+
+    const query = new URLSearchParams(parametros).toString();
+
+    script.src = SCRIPT_URL + "?" + query;
+
+    document.body.appendChild(script);
+}
+
+
+// GUARDAR ESTUDIANTE QUE OBTUVO NOTA 7,0
+function guardarRanking(nombre, fecha, hora, puntaje){
+
+    consultarRanking({
+
+        action: "add",
+        nota: "7.0",
+        nombre: nombre,
+        fecha: fecha,
+        hora: hora,
+        puntaje: puntaje
+
+    }, function(data){
+
+        // Después de guardar, actualizar el ranking
+        setTimeout(mostrarRanking, 500);
+
+    });
+}
+
+
+// MOSTRAR RANKING ORDENADO POR PUNTAJE
+function mostrarRanking(){
+
+    consultarRanking({
+
+        action: "ranking"
+
+    }, function(data){
+
+        const tbody = document.getElementById("rankingBody");
+
+        tbody.innerHTML = "";
+
+        const lista = data.ranking || [];
+
+        if(lista.length === 0){
+
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+
+            td.colSpan = 4;
+            td.textContent = "TODAVÍA NO HAY ESTUDIANTES CON NOTA 7,0";
+
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+
+        }else{
+
+            lista.forEach(estudiante => {
+
+                const tr = document.createElement("tr");
+
+                const valores = [
+/*                  estudiante.puntaje + " segundos", */
+                    estudiante.puntaje,
+
+                    estudiante.fecha,
+                    estudiante.hora,
+                    estudiante.nombre
+                ];
+
+                valores.forEach(valor => {
+
+                    const td = document.createElement("td");
+
+                    td.textContent = valor;
+
+                    tr.appendChild(td);
+
+                });
+
+                tbody.appendChild(tr);
+
+            });
+
+        }
+
+        // Mostrar ventana permanente
+        document.getElementById("rankingOverlay").style.display = "flex";
+
+    });
+
+}
+
+
+function answerLabel(q){return typeof q.a==="number"?money(q.a):q.a}
+
+function shuffle(a){
+ const copy=[...a];
+ for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]]}
+ return copy;
+}
+
+function buildAlternatives(question){
+    let distractors=[];
+
+    if(question.kind==="money"){
+
+        distractors=questions
+            .filter(q=>q.kind==="money"&&q!==question)
+            .map(q=>q.a);
+
+    }else if(question.kind==="month"){
+
+        distractors=["ENERO","FEBRERO","MARZO"]
+            .filter(v=>v!==question.a);
+
+    }else if(question.kind==="account"){
+
+        // ALTERNATIVAS CON NOMBRES DE CUENTAS
+        distractors=accountNames
+            .filter(name=>name!==question.a);
+
+}else if(question.q==="TOTAL DE CUENTAS PARA INGRESOS"){
+
+    distractors=["2 CUENTAS","3 CUENTAS","5 CUENTAS","6 CUENTAS"];
+
+}else if(question.q==="TOTAL DE CUENTAS PARA EGRESOS"){
+
+    distractors=["4 CUENTAS","5 CUENTAS","6 CUENTAS","8 CUENTAS"];
+
+}else{
+
+    if(question.q==="MES(ES) CON FLUJO NEGATIVO"){
+
+        distractors=[
+            "ENERO",
+            "FEBRERO",
+            "MARZO",
+            "NINGUNO",
+            "TODOS LOS MESES"
+        ].filter(v=>v!==question.a);
+
+    }else{
+
+        distractors=question.a==="NINGUNO"
+            ?["TODOS LOS MESES","ENERO Y FEBRERO"]
+            :["2 MESES","4 MESES"];
+    }
+}
+
+    return shuffle([
+        question.a,
+        ...shuffle(distractors).slice(0,2)
+    ].map(value=>({
+        value,
+        label:typeof value==="number"?money(value):value,
+        correct:value===question.a
+    })));
+}
+
+function renderCurrentQuestion(){
+ if(locked)return;
+ if(currentQuestion>=questionOrder.length){finish();return}
+ answerLocked=false;
+ const q=questions[questionOrder[currentQuestion]];
+ document.getElementById("questionCounter").textContent="PREGUNTA "+(currentQuestion+1)+" DE "+questions.length;
+ document.getElementById("questionText").textContent=q.q;
+ document.getElementById("quizFeedback").textContent="";
+ const area=document.getElementById("alternatives");area.innerHTML="";
+ const options=buildAlternatives(q),randomColors=shuffle(colors).slice(0,3);
+ options.forEach((option,index)=>{
+  const palette={
+   yellow:["#ffeb3b","#111827"],red:["#dc2626","#ffffff"],
+   blue:["#2563eb","#ffffff"],cyan:["#67e8f9","#083344"],
+   green:["#16a34a","#ffffff"],black:["#111827","#ffffff"]
+  };
+  const [bg,fg]=palette[randomColors[index]];
+  const btn=document.createElement("button");btn.type="button";btn.className="answerOption";
+  btn.textContent=option.label;btn.style.backgroundColor=bg;btn.style.color=fg;
+  btn.addEventListener("click",()=>chooseAlternative(option));
+  area.appendChild(btn);
+ });
+ document.getElementById("status").textContent="Responde la pregunta "+(currentQuestion+1)+" de "+questions.length+".";
+}
+
+function chooseAlternative(option){
+ if(locked||answerLocked)return;
+ answerLocked=true;
+ document.querySelectorAll(".answerOption").forEach(b=>b.disabled=true);
+ const feedback=document.getElementById("quizFeedback");
+ if(option.correct){
+  correct++;document.getElementById("hits").textContent=correct;
+  feedback.textContent="";createBubbleExplosion();
+
+    }else{
+       feedback.textContent="";
+       showFeedback(false);
+  }
+
+ currentQuestion++;
+ setTimeout(()=>{if(locked)return;if(currentQuestion>=questionOrder.length)finish();else renderCurrentQuestion()},650);
+}
+
+function initQuiz(){
+ questionOrder=shuffle(questions.map((_,i)=>i));currentQuestion=0;
+ document.getElementById("quizWindow").style.display="block";
+ renderCurrentQuestion();
+}
+
+function enableDrag(){
+ const win=document.getElementById("quizWindow"),bar=document.getElementById("quizHeader");
+ let dragging=false,startX=0,startY=0,originX=0,originY=0;
+ bar.addEventListener("pointerdown",e=>{
+  dragging=true;const r=win.getBoundingClientRect();win.style.transform="none";
+  win.style.left=r.left+"px";win.style.top=r.top+"px";
+  startX=e.clientX;startY=e.clientY;originX=r.left;originY=r.top;
+  bar.setPointerCapture(e.pointerId);
+ });
+ bar.addEventListener("pointermove",e=>{
+  if(!dragging)return;
+  const x=Math.max(0,Math.min(window.innerWidth-win.offsetWidth,originX+e.clientX-startX));
+  const y=Math.max(0,Math.min(window.innerHeight-65,originY+e.clientY-startY));
+  win.style.left=x+"px";win.style.top=y+"px";
+ });
+ const stop=()=>dragging=false;
+ bar.addEventListener("pointerup",stop);bar.addEventListener("pointercancel",stop);
+}
+
+function createBubbleExplosion(){
+ const layer=document.getElementById("bubbleExplosion");
+
+const palette=[
+    "#0055FF",  // AZUL ELÉCTRICO
+    "#FF0000",  // ROJO INTENSO
+    "#FFFF00",  // AMARILLO BRILLANTE
+    "#00CC33",  // VERDE INTENSO
+    "#00E5FF"   // CELESTE ELÉCTRICO
+];
+
+ layer.innerHTML="";
+ for(let i=0;i<36;i++){
+  const bubble=document.createElement("span");
+  bubble.className="burstBubble";
+
+  const size=65+Math.random()*85;
+
+  const dx=(Math.random()-.5)*Math.min(window.innerWidth*1.15,1100);
+  const dy=(Math.random()-.5)*Math.min(window.innerHeight*.8,650);
+  bubble.style.setProperty("--size",size+"px");
+  bubble.style.setProperty("--dx",dx+"px");
+  bubble.style.setProperty("--dy",dy+"px");
+  bubble.style.setProperty("--bubble",palette[Math.floor(Math.random()*palette.length)]);
+  bubble.style.animationDelay=(Math.random()*.08)+"s";
+  layer.appendChild(bubble);
+ }
+ setTimeout(()=>{layer.innerHTML="";},850);
+}
+
+
+/* =========================================
+   DESTELLO CADA 5 SEGUNDOS DE INACTIVIDAD
+   DURACIÓN DEL DESTELLO: 0,4 SEGUNDOS
+========================================= */
+
+let idleTimeout = null;
+
+function resetIdleTimer(){
+
+    // No activar si el juego está detenido
+    if(locked) return;
+
+    clearTimeout(idleTimeout);
+
+    // Esperar 5 segundos sin actividad
+    idleTimeout = setTimeout(()=>{
+
+        if(locked) return;
+
+        const flash = document.getElementById("idleFlash");
+
+        // Reiniciar la animación
+        flash.classList.remove("show");
+        void flash.offsetWidth;
+        flash.classList.add("show");
+
+        // Retirar la clase al terminar los 0,4 segundos
+        setTimeout(()=>{
+            flash.classList.remove("show");
+        },400);
+
+        // Programar el próximo destello
+        resetIdleTimer();
+
+    },5000);
+}
+
+// Detectar actividad del estudiante
+["pointerdown","pointermove","keydown","touchstart","wheel"].forEach(event=>{
+
+    document.addEventListener(event,resetIdleTimer,{passive:true});
+
+});
+
+
+function showFeedback(ok){
+
+    const f=document.getElementById("feedback");
+
+    if(ok){
+        f.textContent="✔️";
+        f.className="ok";
+    }else{
+        f.textContent="❌😡❌";
+        f.className="bad";
+    }
+
+    // REINICIAR ANIMACIÓN
+    void f.offsetWidth;
+
+    f.classList.add("show");
+
+    // FINALIZAR EFECTO DESPUÉS DE 0,5 SEGUNDOS
+    setTimeout(()=>{
+        f.className="";
+        f.textContent="";
+    },500);
+}
+
+function start(){
+    if(!locked)return;
+
+    // Mostrar ventana personalizada
+    document.getElementById("nameOverlay").style.display="flex";
+
+    const input=document.getElementById("studentNameInput");
+    input.value="";
+    input.focus();
+}
+
+// CONFIRMAR NOMBRE Y COMENZAR JUEGO
+document.getElementById("confirmStudentName").addEventListener("click",()=>{
+
+    const input=document.getElementById("studentNameInput");
+
+    let studentName=input.value.trim().toUpperCase();
+
+    // No permitir comenzar sin ingresar un nombre
+    if(!studentName){
+        input.focus();
+        return;
+    }
+
+    // Mostrar nombre en la ventana de nota final
+    document.getElementById("studentNameFinal").textContent=studentName;
+
+    // Cerrar ventana de ingreso
+    document.getElementById("nameOverlay").style.display="none";
+
+    // Iniciar juego
+    locked=false;
+
+    interval=setInterval(()=>{
+        remaining--;
+
+        document.getElementById("timer").textContent=
+            String(Math.floor(remaining/60)).padStart(2,"0")+":"+
+            String(remaining%60).padStart(2,"0");
+
+        if(remaining<=0)finish();
+    },1000);
+
+// Mostrar primera pregunta
+initQuiz();
+
+// INICIAR CONTROL DE INACTIVIDAD
+resetIdleTimer();
+
+});
+
+// Permitir comenzar presionando ENTER
+document.getElementById("studentNameInput").addEventListener("keydown",e=>{
+    if(e.key==="Enter"){
+        document.getElementById("confirmStudentName").click();
+    }
+});
+
+function finish(){
+
+    if(locked && document.getElementById("finalOverlay").style.display==="flex")return;
+
+    locked=true;
+
+    clearInterval(interval);
+
+    // DETENER DESTELLOS POR INACTIVIDAD
+    clearTimeout(idleTimeout);
+
+    document.getElementById("idleFlash").classList.remove("show");
+
+
+    // CALCULAR NOTA FINAL
+    const grade=(1+6*(correct/questions.length))
+        .toFixed(1)
+        .replace(".",",");
+
+    const notaNumerica=Number(grade.replace(",","."));
+
+    const now=new Date();
+
+    // OBTENER FECHA Y HORA
+    const fecha=now.toLocaleDateString("es-CL");
+    const hora=now.toLocaleTimeString("es-CL");
+
+    // MOSTRAR NOTA FINAL
+    document.getElementById("finalGrade").textContent=grade;
+
+/*    document.getElementById("finalDate").textContent=
+        "Fecha: "+fecha;
+
+    document.getElementById("finalTime").textContent=
+        "Hora: "+hora; */
+
+    document.getElementById("finalDate").textContent =
+    	now.toLocaleDateString("es-CL") + " | " + now.toLocaleTimeString("es-CL");
+
+    // CERRAR VENTANA DE PREGUNTAS
+    document.getElementById("quizWindow").style.display="none";
+
+    // MOSTRAR PRIMERO LA NOTA FINAL
+    document.getElementById("finalOverlay").style.display="flex";
+
+
+    // SI OBTIENE NOTA 7,0: GUARDAR EN GOOGLE SHEETS
+    if(notaNumerica===7.0){
+
+        const nombre=document.getElementById("studentNameFinal").textContent;
+
+        guardarRanking(
+            nombre,
+            fecha,
+            hora,
+            remaining
+        );
+
+    }else{
+
+        // SI NO OBTIENE 7,0, CONSULTAR EL RANKING IGUALMENTE
+        setTimeout(mostrarRanking,3500);
+
+    }
+
+    // OCULTAR NOTA FINAL Y DEJAR EL RANKING EN PANTALLA
+    setTimeout(()=>{
+
+        document.getElementById("finalOverlay").style.display="none";
+
+    },3500);
+
+}
+
+
+/* ============================================================================== */
+/* =======                                                              ========= */
+/* ============================================================================== */
+
+
+renderTable();
+enableDrag();
+
+
+// ========================================
+// BIENVENIDA: 3 PALABRAS LETRA POR LETRA
+// DURACIÓN TOTAL: 2 SEGUNDOS
+// ========================================
+
+const welcomeWords = [
+    "PLANILLA",
+    "FLUJO",
+    "DE CAJA"
+];
+
+const welcomeOverlay =
+    document.getElementById("welcomeOverlay");
+
+const welcomeWord =
+    document.getElementById("welcomeWord");
+
+let wordIndex = 0;
+
+function showWelcomeWord(){
+
+    if(wordIndex >= welcomeWords.length){
+
+        // TERMINAR BIENVENIDA
+        welcomeOverlay.style.display = "none";
+
+
+// MOSTRAR EMOJI 🎰 Y REINICIAR SU ANIMACIÓN
+const startOverlay = document.getElementById("startOverlay");
+
+// Preparar animación desde cero
+startOverlay.classList.remove("showEmoji");
+startOverlay.style.display = "flex";
+
+// Forzar reinicio de la animación
+void startOverlay.offsetWidth;
+
+// Activar efecto zoom
+startOverlay.classList.add("showEmoji");
+
+// DESPUÉS DEL EMOJI, SOLICITAR NOMBRE
+setTimeout(()=>{
+
+    startOverlay.style.display = "none";
+    startOverlay.classList.remove("showEmoji");
+
+    start();
+
+},1000);
+
+        return;
+    }
+
+    // OBTENER PALABRA ACTUAL
+    const word = welcomeWords[wordIndex];
+
+    welcomeWord.innerHTML = "";
+
+    // PRESENTAR CADA LETRA POR SEPARADO
+    [...word].forEach((letter,index)=>{
+
+        const span = document.createElement("span");
+
+        span.className = "welcomeLetter";
+
+        span.textContent = letter === " " ? "\u00A0" : letter;
+
+        // RETRASO PROGRESIVO PARA CADA LETRA
+        span.style.animationDelay = (index * 0.035) + "s";
+
+        welcomeWord.appendChild(span);
+
+    });
+
+    wordIndex++;
+
+    // CADA PALABRA DISPONE DE 0,66 SEGUNDOS
+    setTimeout(showWelcomeWord, 660);
+}
+
+// INICIAR BIENVENIDA
+showWelcomeWord();
+
+</script>
+</body>
+</html>
